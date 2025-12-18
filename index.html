@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekap Data Paket (Spreadsheet View)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        excel: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <div class="bg-excel-900 text-white p-3 shadow-md flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-green-500 rounded flex items-center justify-center font-bold text-lg">X</div>
+            <div>
+                <h1 class="font-semibold text-sm leading-tight">Rekap Harian Logistik.xlsx</h1>
+                <p class="text-xs text-green-200">Sistem Input & Decoder Otomatis</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button id="btnDownload" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1">
+                <i class="fas fa-file-export"></i> Export CSV
+            </button>
+            <button id="btnReset" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1">
+                <i class="fas fa-trash"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <div class="flex-1 overflow-auto bg-white p-4 relative">
+            <table class="sheet-table shadow-sm">
+                <thead>
+                    <tr>
+                        <th class="w-10 bg-gray-100 border-r-2 border-gray-300">No</th>
+                        <th class="w-64 text-left pl-4">No. Resi</th>
+                        <th class="w-24">Waktu Scan</th>
+                        <th class="w-24">Tanggal</th>
+                        <th class="w-32">Ekspedisi</th>
+                        <th class="w-14">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr class="bg-green-50">
+                        <td class="text-center font-bold text-green-700 text-xs">NEW</td>
+                        <td class="input-cell">
+                            <input type="text" id="inputResi" placeholder="Scan Barcode..." autofocus maxlength="20">
+                        </td>
+                        <td class="input-cell">
+                            <input type="time" id="inputTime" step="1" disabled class="text-center bg-gray-100 text-gray-500 cursor-not-allowed w-full border border-gray-300 rounded px-2 py-1 outline-none">
+                        </td>
+                        <td class="input-cell">
+                             <input type="date" id="inputDate" disabled class="text-center bg-gray-100 text-gray-500 font-medium text-xs cursor-not-allowed w-full border border-gray-300 rounded px-2 py-1 outline-none">
+                        </td>
+                        <td class="text-center text-gray-400 italic text-xs">Auto Detect</td>
+                        <td class="text-center">
+                            <button id="btnAdd" class="text-green-600 hover:text-green-800 transition-colors">
+                                <i class="fas fa-plus-circle fa-lg"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div id="emptyState" class="text-center mt-12 text-gray-300">
+                <i class="fas fa-clipboard-list fa-3x mb-3 opacity-20"></i>
+                <p class="text-sm font-medium">Siap menerima data...</p>
+            </div>
+        </div>
+
+        <div id="dashboardSidebar" class="bg-gray-50 border-l border-gray-300 flex flex-col gap-3 overflow-hidden shadow-inner transition-[width] duration-300 ease-in-out w-80">
+            
+            <div id="sidebarFullContent" class="min-w-[20rem] p-3 flex flex-col gap-3 h-full overflow-y-auto">
+                <div class="flex justify-between items-center border-b border-gray-300 pb-2 mb-1">
+                    <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wide flex items-center gap-2">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </h3>
+                    <button id="btnCollapse" class="text-gray-400 hover:text-gray-600 px-2" title="Sembunyikan">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center">
+                    <div>
+                        <p class="text-[10px] text-gray-500 uppercase font-semibold">Total Scan</p>
+                        <p id="totalCount" class="text-3xl font-bold text-excel-700">0</p>
+                    </div>
+                    <div class="text-center px-4 border-l border-r border-gray-100">
+                        <p class="text-[10px] text-gray-500 uppercase font-semibold text-red-500">Duplikat</p>
+                        <p id="duplicateCount" class="text-xl font-bold text-red-600">0</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-500 uppercase font-semibold">Avg Speed</p>
+                        <p id="total-speed-avg" class="text-xl font-bold text-blue-600">-</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden summary-box">
+                    <div class="summary-header text-gray-700 flex justify-between items-center bg-gray-100 border-b border-gray-200">
+                        <div>Produktivitas</div>
+                        <div class="flex items-center gap-1 bg-white border border-gray-300 px-1.5 py-0.5 rounded">
+                            <i class="fas fa-users text-gray-400 text-xs"></i>
+                            <span class="text-[10px] font-bold text-gray-700">Staff: <input type="number" id="staffCountInput" value="14" class="w-8 text-center border-none bg-transparent outline-none p-0 h-auto" min="1"></span>
+                        </div>
+                    </div>
+                    
+                    <div id="productivityContent">
+                        <div class="shift-toggle summary-sub-header text-blue-700 flex justify-between items-center select-none" data-target="details-shift-1" data-chev="chev-shift-1">
+                            <span class="flex items-center gap-2">
+                                <i id="chev-shift-1" class="fas fa-chevron-right text-[10px] transition-transform duration-200"></i>
+                                <span class="text-xs font-bold">08:00 - 12:00</span>
+                            </span>
+                            <span id="count-shift-1" class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md text-[10px] font-bold border border-blue-200">0 Pkt</span>
+                        </div>
+                        <div id="details-shift-1" class="details-content collapsed bg-blue-50/30">
+                            <div class="summary-row"><span class="text-gray-500 text-[10px]">Range Waktu</span> <span id="time-range-1" class="font-mono text-[10px]">-</span></div>
+                            <div class="summary-row"><span class="text-gray-500 text-[10px]">Durasi Aktif</span> <span id="time-dur-1" class="font-mono text-[10px]">-</span></div>
+                            <div class="summary-row bg-blue-50/50"><span class="text-gray-600 text-[11px]">Speed (Pkt/Jam)</span> <span id="speed-1" class="font-mono val-speed text-sm">-</span></div>
+                            <div class="summary-row bg-blue-50 border-t border-blue-100"><span class="text-gray-600 text-[11px] font-semibold">Prod/Org (Pkt/Jam)</span> <span id="score-1" class="font-mono val-score text-sm">-</span></div>
+                        </div>
+
+                        <div class="shift-toggle summary-sub-header text-orange-700 mt-1 flex justify-between items-center select-none" data-target="details-shift-2" data-chev="chev-shift-2">
+                             <span class="flex items-center gap-2">
+                                <i id="chev-shift-2" class="fas fa-chevron-right text-[10px] transition-transform duration-200"></i>
+                                <span class="text-xs font-bold">13:00 - 17:00</span>
+                            </span>
+                            <span id="count-shift-2" class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-md text-[10px] font-bold border border-orange-200">0 Pkt</span>
+                        </div>
+                        <div id="details-shift-2" class="details-content collapsed bg-orange-50/30">
+                             <div class="summary-row"><span class="text-gray-500 text-[10px]">Range Waktu</span> <span id="time-range-2" class="font-mono text-[10px]">-</span></div>
+                             <div class="summary-row"><span class="text-gray-500 text-[10px]">Durasi Aktif</span> <span id="time-dur-2" class="font-mono text-[10px]">-</span></div>
+                             <div class="summary-row bg-orange-50/50"><span class="text-gray-600 text-[11px]">Speed (Pkt/Jam)</span> <span id="speed-2" class="font-mono val-speed text-sm">-</span></div>
+                             <div class="summary-row bg-orange-50 border-t border-orange-100"><span class="text-gray-600 text-[11px] font-semibold">Prod/Org (Pkt/Jam)</span> <span id="score-2" class="font-mono val-score text-sm">-</span></div>
+                        </div>
+
+                        <div class="shift-toggle summary-sub-header text-purple-700 mt-1 flex justify-between items-center select-none" data-target="details-shift-3" data-chev="chev-shift-3">
+                             <span class="flex items-center gap-2">
+                                <i id="chev-shift-3" class="fas fa-chevron-right text-[10px] transition-transform duration-200"></i>
+                                <span class="text-xs font-bold">18:00 - 20:00</span>
+                            </span>
+                            <span id="count-shift-3" class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md text-[10px] font-bold border border-purple-200">0 Pkt</span>
+                        </div>
+                        <div id="details-shift-3" class="details-content collapsed bg-purple-50/30">
+                             <div class="summary-row"><span class="text-gray-500 text-[10px]">Range Waktu</span> <span id="time-range-3" class="font-mono text-[10px]">-</span></div>
+                             <div class="summary-row"><span class="text-gray-500 text-[10px]">Durasi Aktif</span> <span id="time-dur-3" class="font-mono text-[10px]">-</span></div>
+                             <div class="summary-row bg-purple-50/50"><span class="text-gray-600 text-[11px]">Speed (Pkt/Jam)</span> <span id="speed-3" class="font-mono val-speed text-sm">-</span></div>
+                             <div class="summary-row bg-purple-50 border-t border-purple-100"><span class="text-gray-600 text-[11px] font-semibold">Prod/Org (Pkt/Jam)</span> <span id="score-3" class="font-mono val-score text-sm">-</span></div>
+                        </div>
+
+                        <div class="p-2 bg-gray-100 mt-2 text-right border-t border-gray-200">
+                            <span class="text-[10px] text-gray-500 mr-2 uppercase tracking-wider">Total Durasi</span>
+                            <span id="total-duration-sum" class="font-mono font-bold text-gray-800 text-sm">0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden summary-box">
+                    <div id="toggleExpedition" class="summary-header text-gray-700 bg-gray-100 border-b border-gray-200 cursor-pointer hover:bg-gray-200 select-none flex justify-between items-center">
+                         <div class="flex items-center gap-2">
+                            <i id="expChevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+                            <span>Total Per Ekspedisi</span>
+                        </div>
+                    </div>
+                    <div id="expeditionContent">
+                        <div id="statsContainer">
+                            <div class="summary-row hover:bg-gray-50"><span class="text-gray-600">SPX</span> <span id="count-SPX" class="font-mono font-bold text-gray-800">0</span></div>
+                            <div class="summary-row hover:bg-gray-50"><span class="text-gray-600">JTR</span> <span id="count-JTR" class="font-mono font-bold text-gray-800">0</span></div>
+                            <div class="summary-row hover:bg-gray-50"><span class="text-gray-600">JNT KARGO</span> <span id="count-JNTK" class="font-mono font-bold text-gray-800">0</span></div>
+                            <div class="summary-row hover:bg-gray-50"><span class="text-gray-600">JNT EXPRESS</span> <span id="count-JNTE" class="font-mono font-bold text-gray-800">0</span></div>
+                            <div class="summary-row hover:bg-gray-50"><span class="text-gray-600">Lainnya</span> <span id="count-OTHER" class="font-mono font-bold text-gray-800">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sidebarMiniContent" class="hidden flex-col items-center pt-4 h-full cursor-pointer hover:bg-gray-200 transition-colors" title="Buka Dashboard">
+                <i class="fas fa-chevron-left text-gray-500 mb-4"></i>
+                <div class="writing-vertical text-xs font-bold text-gray-500 uppercase tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">
+                    Dashboard
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
